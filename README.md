@@ -110,9 +110,6 @@ com.yourorg.observability
 │   ├── MetricRepository.java
 │   └── AlertRepository.java
 └── resources/static/dashboard.html
-📸 Sample Screenshot
-<img width="758" height="380" alt="image" src="https://github.com/user-attachments/assets/db2ed3c4-576e-4fa9-9b0f-9a82484f9449" />
-<img width="563" height="327" alt="image" src="https://github.com/user-attachments/assets/21d79a67-4657-4793-af81-3dfe52082002" />
 
 
 💡 Bonus Features
