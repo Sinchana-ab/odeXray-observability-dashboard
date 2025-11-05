@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>System Observability Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f6fa;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    .chart-container {
+      width: 80%;
+      margin: 30px auto;
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+    #alerts {
+      margin-top: 20px;
+      padding: 10px;
+      background: #fff;
+      border-radius: 8px;
+    }
+    .alert {
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+    }
+    .alert.CPU { color: #e74c3c; }
+    .alert.MEMORY { color: #f39c12; }
+    .config {
+      margin-top: 20px;
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+    }
+    input[type="number"] {
+      width: 80px;
+    }
+    button {
+      padding: 6px 12px;
+      margin-left: 10px;
+      background-color: #3498db;
+      border: none;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+  </style>
+</head>
+<body>
+  <h1>Observability & Security Dashboard</h1>
+
+  <div class="chart-container">
+    <canvas id="metricChart"></canvas>
+  </div>
+
+  <div id="alerts">
+    <h3>Recent Alerts</h3>
+    <div id="alertList"></div>
+  </div>
+
+  <div class="config">
+    <h3>Configure Alert Thresholds</h3>
+    CPU: <input type="number" id="cpuThreshold" value="80" /> %
+    Memory: <input type="number" id="memThreshold" value="75" /> %
+    <button onclick="updateThresholds()">Update</button>
+  </div>
+
+  <script>
+  // Setup chart
+  const ctx = document.getElementById('metricChart').getContext('2d');
+  const metricChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        {
+          label: 'CPU Usage %',
+          data: [],
+          borderColor: 'rgb(231, 76, 60)',
+          backgroundColor: 'rgba(231,76,60,0.2)',
+          tension: 0.3,        // smooth curve
+          pointRadius: 2,
+        },
+        {
+          label: 'Memory Usage %',
+          data: [],
+          borderColor: 'rgb(241, 196, 15)',
+          backgroundColor: 'rgba(241,196,15,0.2)',
+          tension: 0.3,
+          pointRadius: 2,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      animation: {
+        duration: 800,
+        easing: 'easeInOutQuart'
+      },
+      scales: {
+        x: { display: true, title: { display: true, text: 'Time' } },
+        y: { beginAtZero: true, suggestedMax: 100, title: { display: true, text: 'Usage (%)' } }
+      },
+      plugins: {
+        legend: { position: 'top' },
+      }
+    }
+  });
+
+  async function fetchSummary() {
+    try {
+      const res = await fetch('/api/summary');
+      if (!res.ok) return;
+      const data = await res.json();
+
+      const now = new Date().toLocaleTimeString();
+      if (metricChart.data.labels.length > 20) {
+        metricChart.data.labels.shift();
+        metricChart.data.datasets[0].data.shift();
+        metricChart.data.datasets[1].data.shift();
+      }
+
+      const cpu = data.avgCpu || 0;
+      const mem = data.avgMemory || 0;
+
+      metricChart.data.labels.push(now);
+      metricChart.data.datasets[0].data.push(cpu);
+      metricChart.data.datasets[1].data.push(mem);
+
+      // Change line color when crossing thresholds
+      const cpuThreshold = parseFloat(document.getElementById('cpuThreshold').value);
+      const memThreshold = parseFloat(document.getElementById('memThreshold').value);
+      metricChart.data.datasets[0].borderColor = cpu > cpuThreshold ? 'red' : 'rgb(231, 76, 60)';
+      metricChart.data.datasets[1].borderColor = mem > memThreshold ? 'orange' : 'rgb(241, 196, 15)';
+
+      metricChart.update();
+
+      updateAlertList(data);
+    } catch (e) {
+      console.error('Fetch error:', e);
+    }
+  }
+
+  function updateAlertList(data) {
+    const alertDiv = document.getElementById('alertList');
+    alertDiv.innerHTML = '';
+    if (data.lastAlertTimestamps && data.lastAlertTimestamps.length) {
+      data.lastAlertTimestamps.forEach(ts => {
+        const div = document.createElement('div');
+        div.className = 'alert';
+        div.innerHTML = `⚠️ Alert at ${ts}`;
+        alertDiv.appendChild(div);
+      });
+    } else {
+      alertDiv.innerHTML = '<em>No recent alerts</em>';
+    }
+  }
+
+  function updateThresholds() {
+    const cpu = document.getElementById('cpuThreshold').value;
+    const mem = document.getElementById('memThreshold').value;
+    fetch('/api/thresholds', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ cpu, memory: mem })
+    });
+    alert('Thresholds updated!');
+  }
+
+  // Pull data every 5 seconds
+  setInterval(fetchSummary, 5000);
+  fetchSummary();
+</script>
+
+</body>
+</html>
