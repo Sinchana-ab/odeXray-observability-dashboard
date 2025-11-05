@@ -43,7 +43,7 @@ cd odeXray-observability-dashboard
 In src/main/resources/application.properties:
 
 properties
-Copy code
+
 spring.datasource.url=jdbc:h2:mem:testdb
 spring.datasource.driverClassName=org.h2.Driver
 spring.datasource.username=sa
@@ -54,7 +54,7 @@ spring.h2.console.enabled=true
 
 3️⃣ Run Application
 bash
-Copy code
+
 mvn spring-boot:run
 The app will start on http://localhost:8080
 
